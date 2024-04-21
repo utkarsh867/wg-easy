@@ -40,17 +40,25 @@ module.exports = class WireGuard {
 
         debug('Loading configuration...');
         let config;
+        const address = WG_SERVER_ADDRESS;
+        const cidrBlock = WG_DEFAULT_ADDRESS_RANGE;
         try {
           config = await fs.readFile(path.join(WG_PATH, 'wg0.json'), 'utf8');
           config = JSON.parse(config);
+          config = {
+            ...config,
+            server: {
+              ...config.server,
+              address,
+              cidrBlock
+            }
+          }
           debug('Configuration loaded.');
         } catch (err) {
           const privateKey = await Util.exec('wg genkey');
           const publicKey = await Util.exec(`echo ${privateKey} | wg pubkey`, {
             log: 'echo ***hidden*** | wg pubkey',
           });
-          const address = WG_SERVER_ADDRESS;
-          const cidrBlock = WG_DEFAULT_ADDRESS_RANGE;
 
           config = {
             server: {
@@ -112,12 +120,12 @@ PostDown = ${WG_POST_DOWN}
       if (!client.enabled) continue;
 
       result += `
-
 # Client: ${client.name} (${clientId})
 [Peer]
 PublicKey = ${client.publicKey}
-${client.preSharedKey ? `PresharedKey = ${client.preSharedKey}\n` : ''
-}AllowedIPs = ${client.address}/32`;
+${client.preSharedKey ? `PresharedKey = ${client.preSharedKey}` : ''}
+AllowedIPs = ${client.address}/32
+`;
     }
 
     debug('Config saving...');
@@ -212,8 +220,8 @@ ${WG_MTU ? `MTU = ${WG_MTU}\n` : ''}\
 
 [Peer]
 PublicKey = ${config.server.publicKey}
-${client.preSharedKey ? `PresharedKey = ${client.preSharedKey}\n` : ''
-}AllowedIPs = ${WG_ALLOWED_IPS}
+${client.preSharedKey ? `PresharedKey = ${client.preSharedKey}` : ''}
+AllowedIPs = ${WG_ALLOWED_IPS}
 PersistentKeepalive = ${WG_PERSISTENT_KEEPALIVE}
 Endpoint = ${WG_HOST}:${WG_PORT}`;
   }
